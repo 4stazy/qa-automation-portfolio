@@ -30,3 +30,11 @@ npx playwright show-report
 ## Useful Documentation
 - [Terminal Navigation Commands](docs/terminal-navigation-commands.md)
 - [Playwright Terminal Commands](docs/playwright-terminal-commands.md)
+
+### Run Notes API tests
+
+Create a local `.env` file based on `.env.example`:
+
+```env
+TEST_EMAIL=
+TEST_PASSWORD=
