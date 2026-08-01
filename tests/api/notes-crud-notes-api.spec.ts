@@ -5,14 +5,14 @@ const API_BASE_URL = 'https://practice.expandtesting.com/notes/api';
 test.describe('Notes API - create, read and delete', () => {
 
     let authToken: string;
-    let negativeNoteId: string;
+    let negativeTestNoteId: string;
     const noteBody = {
                 title: `Test note title ${Date.now()}`,
                 description: 'Test note Description',
                 category: 'Work',
                 completed: false,
             };
-    const noteBodyNegative = {
+    const noteBodyNegativeTest = {
                 title: `Negative test note title ${Date.now()}`,
                 description: 'Negative test note Description',
                 category: 'Home',
@@ -44,7 +44,7 @@ test.describe('Notes API - create, read and delete', () => {
             headers: {
                 'x-auth-token': authToken,
             },
-            data: noteBodyNegative,
+            data: noteBodyNegativeTest,
             ignoreHTTPSErrors: true,
 
         });
@@ -60,20 +60,20 @@ test.describe('Notes API - create, read and delete', () => {
         const getAllNotesBody = await getAllNotesResponse.json();
         expect(Array.isArray(getAllNotesBody.data)).toBe(true);
         const createdNegativeNote = getAllNotesBody.data.find(
-            (note: { title: string }) => note.title === noteBodyNegative.title
+            (note: { title: string }) => note.title === noteBodyNegativeTest.title
             );
 
          if (!createdNegativeNote) {
-            throw new Error(`Created Negative note "${noteBodyNegative.title}" was not found`)
+            throw new Error(`Created Negative note "${noteBodyNegativeTest.title}" was not found`)
             };
         
         // Assertions for created note
-        expect(createdNegativeNote.title).toBe(noteBodyNegative.title);
-        expect(createdNegativeNote.description).toBe(noteBodyNegative.description);
-        expect(createdNegativeNote.category).toBe(noteBodyNegative.category);
+        expect(createdNegativeNote.title).toBe(noteBodyNegativeTest.title);
+        expect(createdNegativeNote.description).toBe(noteBodyNegativeTest.description);
+        expect(createdNegativeNote.category).toBe(noteBodyNegativeTest.category);
         expect(createdNegativeNote.completed).toBe(false);
         expect(typeof createdNegativeNote.id).toBe('string');
-        negativeNoteId = createdNegativeNote.id;
+        negativeTestNoteId = createdNegativeNote.id;
 
     });
 
@@ -155,8 +155,8 @@ test.describe('Notes API - create, read and delete', () => {
 
     });
 
-    test('GET negativeNoteId without token → 401', async({ request }) => {
-        const noteResponse = await request.get(`${API_BASE_URL}/notes/${negativeNoteId}`, {
+    test('GET negativeTestNoteId without token → 401', async({ request }) => {
+        const noteResponse = await request.get(`${API_BASE_URL}/notes/${negativeTestNoteId}`, {
             ignoreHTTPSErrors: true,
         });
         expect(noteResponse.status()).toBe(401);
@@ -168,9 +168,9 @@ test.describe('Notes API - create, read and delete', () => {
 
     });
 
-    test('DELETE negativeNoteId without token → 401', async ({request}) => {
+    test('DELETE negativeTestNoteId without token → 401', async ({request}) => {
         // DELETE negativeNoteId without token → 401
-        const noteDeleteResponse = await request.delete(`${API_BASE_URL}/notes/${negativeNoteId}`, {
+        const noteDeleteResponse = await request.delete(`${API_BASE_URL}/notes/${negativeTestNoteId}`, {
             ignoreHTTPSErrors: true,
         });
         expect(noteDeleteResponse.status()).toBe(401);
@@ -179,7 +179,7 @@ test.describe('Notes API - create, read and delete', () => {
         expect(noteDeleteResponseBody.success).toBe(false);
         expect(noteDeleteResponseBody.message).toBe('No authentication token specified in x-auth-token header');
         // GET with token → 200
-        const noteResponse = await request.get(`${API_BASE_URL}/notes/${negativeNoteId}`, {
+        const noteResponse = await request.get(`${API_BASE_URL}/notes/${negativeTestNoteId}`, {
             headers: {
                 'x-auth-token': authToken,
             },
@@ -188,10 +188,10 @@ test.describe('Notes API - create, read and delete', () => {
         expect(noteResponse.status()).toBe(200);
         const noteResponseBody = await noteResponse.json();
         expect(noteResponseBody.message).toBe('Note successfully retrieved');
-        expect(noteResponseBody.data.id).toBe(negativeNoteId);
-        expect(noteResponseBody.data.title).toBe(noteBodyNegative.title);
-        expect(noteResponseBody.data.description).toBe(noteBodyNegative.description);
-        expect(noteResponseBody.data.category).toBe(noteBodyNegative.category);
+        expect(noteResponseBody.data.id).toBe(negativeTestNoteId);
+        expect(noteResponseBody.data.title).toBe(noteBodyNegativeTest.title);
+        expect(noteResponseBody.data.description).toBe(noteBodyNegativeTest.description);
+        expect(noteResponseBody.data.category).toBe(noteBodyNegativeTest.category);
         expect(noteResponseBody.data.completed).toBe(false);
 
 
@@ -210,14 +210,28 @@ test.describe('Notes API - create, read and delete', () => {
         expect(responseBody.success).toBe(false);
         expect(responseBody.message).toBe('Note ID must be a valid ID');
 
-
+    });
+    
+    
+    test('GET /notes/:id returns 401 when token is invalid', async({request}) =>{
+        const invalidToken = `${authToken.slice(0, -1)}x`;
+        const response = await request.get(`${API_BASE_URL}/notes/${negativeTestNoteId}`, {
+            headers: {
+                'x-auth-token': invalidToken,
+            },
+            ignoreHTTPSErrors: true,
+        });
+        expect(response.status()).toBe(401);
+        const responseBody = await response.json();
+        expect(responseBody.success).toBe(false);
+        expect(responseBody.message).toContain('Access token is not valid or has expired, you will need to login');
     });
 
     test.afterAll(async({request}) => {
-        if (!authToken || !negativeNoteId) {
+        if (!authToken || !negativeTestNoteId) {
             return;
             }
-        const noteDeleteResponse = await request.delete(`${API_BASE_URL}/notes/${negativeNoteId}`, {
+        const noteDeleteResponse = await request.delete(`${API_BASE_URL}/notes/${negativeTestNoteId}`, {
             headers: {
                 'x-auth-token': authToken,
             },
