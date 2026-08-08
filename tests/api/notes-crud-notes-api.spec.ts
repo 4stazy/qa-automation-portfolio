@@ -133,7 +133,9 @@ test.describe("Notes API - create, read and delete", () => {
   test("Create, get and delete note", async ({ request }) => {
     const createdNote = await createAndFindNote(request, authToken, noteBody);
     const createdNoteId = createdNote.id;
-    // GET request for note ID to verify it does exist
+    let noteWasDeleted = false;
+    try {
+        // GET request for note ID to verify it does exist
     const noteResponse = await request.get(
       `${API_BASE_URL}/notes/${createdNoteId}`,
       getAuthenticatedRequestOptions(authToken),
@@ -145,7 +147,6 @@ test.describe("Notes API - create, read and delete", () => {
 
     expectNoteToMatch(noteResponseBody.data, noteBody);
     expect(noteResponseBody.data.id).toBe(createdNoteId);
-
     // DELETE note API request
     const noteDeleteResponse = await request.delete(
       `${API_BASE_URL}/notes/${createdNoteId}`,
@@ -153,7 +154,7 @@ test.describe("Notes API - create, read and delete", () => {
     );
 
     expect(noteDeleteResponse.status()).toBe(200);
-    // {"success":true,"status":200,"message":"Note successfully deleted"}
+    noteWasDeleted = true;
     const noteDeleteResponseBody = await noteDeleteResponse.json();
     expect(noteDeleteResponseBody.success).toBe(true);
     expect(noteDeleteResponseBody.message).toBe("Note successfully deleted");
@@ -167,6 +168,16 @@ test.describe("Notes API - create, read and delete", () => {
       404,
       "No note was found with the provided ID, Maybe it was deleted",
     );
+    } finally {
+        if (!noteWasDeleted) {
+        await request.delete(
+            `${API_BASE_URL}/notes/${createdNoteId}`,
+            getAuthenticatedRequestOptions(authToken),
+        );
+    }
+    };
+
+    
   });
 
   test("GET negativeTestNoteId without token → 401", async ({ request }) => {
