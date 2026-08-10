@@ -1,4 +1,5 @@
 import {test, expect} from '@playwright/test';
+import { LoginPage } from '../../pages/login.page';
 
 const BASE_UI_URL = 'https://practice.expandtesting.com/notes/app';
 const validEmail = process.env.TEST_EMAIL;
@@ -7,8 +8,9 @@ const validPassword = process.env.TEST_PASSWORD;
 test.describe('Notes App login', () => {
     test.beforeEach(async ({page}) => {
         await page.goto(`${BASE_UI_URL}`);
+        await expect(page.getByTestId('build-version')).toBeVisible();
         await expect(page).toHaveTitle(/Notes React Application/);
-        const loginLinkButton = page.getByRole('link', {name: 'Login'});
+        const loginLinkButton = page.getByTestId('open-login-view').getByRole('link', {name: 'Login'});
         await expect(loginLinkButton).toBeVisible();
         await loginLinkButton.click();
         await expect(page).toHaveURL(`${BASE_UI_URL}/login`);
@@ -19,10 +21,10 @@ test.describe('Notes App login', () => {
             !validEmail || !validPassword,
             'TEST_EMAIL or TEST_PASSWORD is not configured'
             );
-        await page.getByLabel('Email address').fill(validEmail!);
-        await page.getByLabel('Password').fill(validPassword!);
-        await page.getByRole('button', {name: 'Login'}).click();
-        await expect(page.getByRole('button', {name: 'Logout'})).toBeVisible();
+        const loginPage = new LoginPage(page);
+        await loginPage.login(validEmail!, validPassword!);
+    
+        await expect(page.getByRole('button', {name: 'Logout'})).toBeVisible({ timeout: 10000 });
         await expect(page.getByRole('button', {name: '+ Add Note'})).toBeVisible();
 
     });
@@ -32,11 +34,12 @@ test.describe('Notes App login', () => {
             !validEmail || !validPassword,
             'TEST_EMAIL or TEST_PASSWORD is not configured'
             );
+        const loginPage = new LoginPage(page);
+        const invalidPassword = `${validPassword!}+1`;
         const loginErrorMessage = 'Incorrect email address or password';
         const alertMessage = page.getByTestId('alert-message');
-        await page.getByLabel('Email address').fill(validEmail!);
-        await page.getByLabel('Password').fill(`${validPassword!}+1`);
-        await page.getByRole('button', {name: 'Login'}).click();
+        await loginPage.login(validEmail!, invalidPassword);
+      
         await expect(alertMessage).toBeVisible();
         await expect(alertMessage).toHaveText(loginErrorMessage);
         await expect(page).toHaveURL(/\/login$/);
@@ -48,16 +51,16 @@ test.describe('Notes App login', () => {
             !validEmail || !validPassword,
             'TEST_EMAIL or TEST_PASSWORD is not configured'
             );
+        const loginPage = new LoginPage(page);
         const logoutButton = page.getByRole('button', {name: 'Logout'});
         const addNoteButton = page.getByRole('button', {name: '+ Add Note'});
-        await page.getByLabel('Email address').fill(validEmail!);
-        await page.getByLabel('Password').fill(validPassword!);
-        await page.getByRole('button', {name: 'Login'}).click();
-        await expect(logoutButton).toBeVisible();
+        await loginPage.login(validEmail!, validPassword!);
+    
+        await expect(logoutButton).toBeVisible({ timeout: 10000 });
         await expect(addNoteButton).toBeVisible();
 
         await logoutButton.click();
-        const loginLinkButton = page.getByRole('link', {name: 'Login'});
+        const loginLinkButton = page.getByTestId('open-login-view').getByRole('link', {name: 'Login'});
         await expect(loginLinkButton).toBeVisible();
         await expect(page.getByTestId('open-register-view')).toHaveText('Create an account');
         await expect(logoutButton).toHaveCount(0);
