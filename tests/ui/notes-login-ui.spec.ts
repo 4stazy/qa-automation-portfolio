@@ -1,5 +1,5 @@
-import {test, expect} from '@playwright/test';
-import { LoginPage } from '../../pages/login.page';
+// import {test, expect} from '@playwright/test';
+import { test, expect } from '../../fixtures/app.fixture';
 
 const BASE_UI_URL = 'https://practice.expandtesting.com/notes/app';
 const validEmail = process.env.TEST_EMAIL;
@@ -16,12 +16,11 @@ test.describe('Notes App login', () => {
         await expect(page).toHaveURL(`${BASE_UI_URL}/login`);
 
     });
-    test('Login with valid credentials', async({page}) => {
+    test('Login with valid credentials', async({ page, loginPage }) => {
         test.skip(
             !validEmail || !validPassword,
             'TEST_EMAIL or TEST_PASSWORD is not configured'
             );
-        const loginPage = new LoginPage(page);
         await loginPage.login(validEmail!, validPassword!);
     
         await expect(page.getByRole('button', {name: 'Logout'})).toBeVisible({ timeout: 10000 });
@@ -29,12 +28,11 @@ test.describe('Notes App login', () => {
 
     });
 
-    test('Error login message is displayed when login with invalid credentials', async({page}) => {
+    test('Error login message is displayed when login with invalid credentials', async({ page, loginPage }) => {
         test.skip(
             !validEmail || !validPassword,
             'TEST_EMAIL or TEST_PASSWORD is not configured'
             );
-        const loginPage = new LoginPage(page);
         const invalidPassword = `${validPassword!}+1`;
         const loginErrorMessage = 'Incorrect email address or password';
         const alertMessage = page.getByTestId('alert-message');
@@ -46,12 +44,12 @@ test.describe('Notes App login', () => {
 
     });
 
-    test('Authenticated user can logout', async({page}) => {
+    test('Authenticated user can logout', async({ page, loginPage }) => {
         test.skip(
             !validEmail || !validPassword,
             'TEST_EMAIL or TEST_PASSWORD is not configured'
             );
-        const loginPage = new LoginPage(page);
+
         const logoutButton = page.getByRole('button', {name: 'Logout'});
         const addNoteButton = page.getByRole('button', {name: '+ Add Note'});
         await loginPage.login(validEmail!, validPassword!);
