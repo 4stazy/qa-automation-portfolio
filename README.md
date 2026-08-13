@@ -18,7 +18,7 @@ The project combines:
 
 Practice application:
 
-https://practice.expandtesting.com/notes/app
+[Expand Testing Notes App](https://practice.expandtesting.com/notes/app)
 
 ## Tech Stack
 
