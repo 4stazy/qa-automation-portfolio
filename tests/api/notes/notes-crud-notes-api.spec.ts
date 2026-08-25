@@ -1,8 +1,4 @@
-import {
-  test,
-  expect,
-  type APIResponse,
-} from "@playwright/test";
+import { test, expect, type APIResponse } from "@playwright/test";
 
 import { NotesApiClient } from "../../../clients/notes-api.client";
 
@@ -26,7 +22,7 @@ function expectNoteToMatch(actualNote: Note, expectedNote: NotePayload): void {
   expect(actualNote.category).toBe(expectedNote.category);
   expect(actualNote.completed).toBe(expectedNote.completed);
   expect(typeof actualNote.id).toBe("string");
-};
+}
 async function expectApiErrorResponse(
   response: APIResponse,
   expectedStatus: number,
@@ -53,7 +49,7 @@ async function createAndVerifyNote(
   return createdNote;
 }
 
-test.describe("Notes API - create, read and delete", () => {
+test.describe("Notes API - CRUD", () => {
   let authToken: string;
   let negativeTestNoteId: string;
   const noteBody: NotePayload = {
@@ -61,6 +57,12 @@ test.describe("Notes API - create, read and delete", () => {
     description: "Test note Description",
     category: "Work",
     completed: false,
+  };
+  const noteBodyUpdate: NotePayload = {
+    title: "Test note title updated",
+    description: "Test note Description updated",
+    category: "Home",
+    completed: true,
   };
   const noteBodyNegativeTest: NotePayload = {
     title: `Negative test note title ${Date.now()}`,
@@ -96,7 +98,7 @@ test.describe("Notes API - create, read and delete", () => {
     negativeTestNoteId = createdNegativeNote.id;
   });
 
-  test("Create, get and delete note", async ({ request }) => {
+  test("Create, get, update and delete note", async ({ request }) => {
     const notesClient = new NotesApiClient(request, authToken);
     const createdNote = await createAndVerifyNote(notesClient, noteBody);
     const createdNoteId = createdNote.id;
@@ -110,6 +112,26 @@ test.describe("Notes API - create, read and delete", () => {
 
       expectNoteToMatch(noteResponseBody.data, noteBody);
       expect(noteResponseBody.data.id).toBe(createdNoteId);
+      // Update note PUT method
+      const noteUpdatedResponse = await notesClient.updateNote(
+        createdNoteId,
+        noteBodyUpdate,
+      );
+      expect(noteUpdatedResponse.status()).toBe(200);
+      const noteUpdatedResponseBody = await noteUpdatedResponse.json();
+      expect(noteUpdatedResponseBody.message).toBe("Note successfully Updated");
+      expectNoteToMatch(noteUpdatedResponseBody.data, noteBodyUpdate);
+      expect(noteUpdatedResponseBody.success).toBe(true);
+      expect(noteUpdatedResponseBody.data.id).toBe(createdNoteId);
+      // Validation for persisted note updated state
+      const updatedNoteGetResponse = await notesClient.getNote(createdNoteId);
+      expect(updatedNoteGetResponse.status()).toBe(200);
+      const updatedNoteGetResponseBody = await updatedNoteGetResponse.json();
+      expectNoteToMatch(updatedNoteGetResponseBody.data, noteBodyUpdate);
+      expect(updatedNoteGetResponseBody.data.id).toBe(createdNoteId);
+      expect(updatedNoteGetResponseBody.message).toBe(
+        "Note successfully retrieved",
+      );
       // DELETE note API request
       const noteDeleteResponse = await notesClient.deleteNote(createdNoteId);
 
@@ -146,7 +168,8 @@ test.describe("Notes API - create, read and delete", () => {
   test("DELETE negativeTestNoteId without token → 401", async ({ request }) => {
     const noAuthNotesClient = new NotesApiClient(request);
     // DELETE negativeNoteId without token → 401
-    const noteDeleteResponse = await noAuthNotesClient.deleteNote(negativeTestNoteId); 
+    const noteDeleteResponse =
+      await noAuthNotesClient.deleteNote(negativeTestNoteId);
     await expectApiErrorResponse(
       noteDeleteResponse,
       401,
@@ -154,7 +177,8 @@ test.describe("Notes API - create, read and delete", () => {
     );
     // GET with token → 200
     const authenticatedNotesClient = new NotesApiClient(request, authToken);
-    const noteResponse = await authenticatedNotesClient.getNote(negativeTestNoteId);
+    const noteResponse =
+      await authenticatedNotesClient.getNote(negativeTestNoteId);
 
     expect(noteResponse.status()).toBe(200);
     const noteResponseBody = await noteResponse.json();

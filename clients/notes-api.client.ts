@@ -44,4 +44,11 @@ export class NotesApiClient {
       data,
     });
   }
+
+  async updateNote(noteId: string, data: unknown): Promise<APIResponse> {
+    return this.request.put(`${API_BASE_URL}/notes/${noteId}`, {
+      ...this.getRequestOptions(),
+      data,
+    });
+  }
 }
