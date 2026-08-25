@@ -51,4 +51,8 @@ export class NotesApiClient {
       data,
     });
   }
+
+  async getAllNotes(): Promise<APIResponse> {
+    return this.request.get(`${API_BASE_URL}/notes`, this.getRequestOptions());
+  }
 }

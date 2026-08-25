@@ -210,16 +210,39 @@ test.describe("Notes API - CRUD", () => {
     );
   });
 
+  test("GET all notes returns created note", async ({ request }) => {
+    const notesClient = new NotesApiClient(request, authToken);
+    const createdNote = await createAndVerifyNote(notesClient, noteBody);
+    const createdNoteId = createdNote.id;
+    try {
+      const allNotesResponse = await notesClient.getAllNotes();
+      expect(allNotesResponse.status()).toBe(200);
+
+      const allNotesResponseBody = await allNotesResponse.json();
+      expect(allNotesResponseBody.message).toBe("Notes successfully retrieved");
+      expect(allNotesResponseBody.success).toBe(true);
+      const notes = allNotesResponseBody.data as Note[];
+      const createdNoteFromAllNotes = notes.find(
+        (note) => note.id === createdNoteId,
+      );
+      expect(createdNoteFromAllNotes).toBeDefined();
+      if (createdNoteFromAllNotes === undefined) {
+        throw new Error(
+          `Created note with id ${createdNoteId} was not found in GET all notes response`,
+        );
+      }
+      expectNoteToMatch(createdNoteFromAllNotes, noteBody);
+      expect(createdNoteFromAllNotes.id).toBe(createdNoteId);
+    } finally {
+      const noteDeleteResponse = await notesClient.deleteNote(createdNoteId);
+    }
+  });
+
   test.afterAll(async ({ request }) => {
     if (!authToken || !negativeTestNoteId) {
       return;
     }
     const notesClient = new NotesApiClient(request, authToken);
     const noteDeleteResponse = await notesClient.deleteNote(negativeTestNoteId);
-
-    expect(noteDeleteResponse.status()).toBe(200);
-    const noteDeleteResponseBody = await noteDeleteResponse.json();
-    expect(noteDeleteResponseBody.success).toBe(true);
-    expect(noteDeleteResponseBody.message).toBe("Note successfully deleted");
   });
 });
