@@ -1,68 +1,118 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
+import { AuthApiClient } from "../../../clients/auth-api.client";
 
-const API_BASE_URL = 'https://practice.expandtesting.com/notes/api';
+function getTestCredentials(): {
+  email: string;
+  password: string;
+} {
+  const email = process.env.TEST_EMAIL;
+  const password = process.env.TEST_PASSWORD;
 
+  if (!email || !password) {
+    throw new Error("TEST_EMAIL or TEST_PASSWORD was not loaded from .env");
+  }
 
+  return { email, password };
+}
+type UserProfile = {
+  id: string;
+  name: string;
+  email: string;
+};
+async function loginAndGetToken(
+  authClient: AuthApiClient,
+  email: string,
+  password: string,
+): Promise<string> {
+  const loginResponse = await authClient.login(email, password);
 
-test.describe('Notes API - Authentication', ()=> {
-    test('POST /users/login returns token for valid credentials', async ({request}) => {
-        
-        const email = process.env.TEST_EMAIL;
-        const password = process.env.TEST_PASSWORD;
+  expect(loginResponse.status()).toBe(200);
+  const loginResponseBody = await loginResponse.json();
+  expect(loginResponseBody.data.token).toBeDefined();
+  expect(typeof loginResponseBody.data.token).toBe("string");
 
-        if (!email || !password) {
-            throw new Error(
-            'TEST_EMAIL or TEST_PASSWORD was not loaded from .env'
-            );
-        }
+  return loginResponseBody.data.token;
+}
 
-        const response = await request.post(`${API_BASE_URL}/users/login`, {
-            data: {
-                email,
-                password,
-            },
-            ignoreHTTPSErrors: true,
-        });
+test.describe("Notes API - Authentication", () => {
+  test("POST /users/login returns token for valid credentials", async ({
+    request,
+  }) => {
+    const { email, password } = getTestCredentials();
+    const authClient = new AuthApiClient(request);
+    const loginResponse = await authClient.login(email, password);
 
-        expect(response.status()).toBe(200);
-        expect(response.headers()['content-type']).toContain('application/json');
+    expect(loginResponse.status()).toBe(200);
+    expect(loginResponse.headers()["content-type"]).toContain(
+      "application/json",
+    );
 
-        const body = await response.json();
+    const loginResponseBody = await loginResponse.json();
 
-        expect(body.success).toBe(true);
-        expect(body.data).toBeDefined();
-        expect(body.data.token).toBeDefined();
-        expect(typeof body.data.token).toBe('string');
-        expect(body.data.token.length).toBeGreaterThan(0);
-        expect(body.data.password).toBeUndefined();
-        expect(body.data.email).toBe(email);
+    expect(loginResponseBody.success).toBe(true);
+    expect(loginResponseBody.data).toBeDefined();
+    expect(loginResponseBody.data.token).toBeDefined();
+    expect(typeof loginResponseBody.data.token).toBe("string");
+    expect(loginResponseBody.data.token.length).toBeGreaterThan(0);
+    expect(loginResponseBody.data.password).toBeUndefined();
+    expect(loginResponseBody.data.email).toBe(email);
+  });
+  test("POST /users/login rejects an invalid password", async ({ request }) => {
+    const { email, password } = getTestCredentials();
+    const wrongPassword = `${password}-wrong`;
+    const authClient = new AuthApiClient(request);
+    const loginResponse = await authClient.login(email, wrongPassword);
 
-    });
-    test('POST /users/login rejects an invalid password', async ({request}) => {
-        const email = process.env.TEST_EMAIL;
-        const password = process.env.TEST_PASSWORD;
+    expect(loginResponse.status()).toBe(401);
+    const loginResponseBody = await loginResponse.json();
 
-        if (!email || !password) {
-            throw new Error(
-            'TEST_EMAIL or TEST_PASSWORD was not loaded from .env'
-            );
-        }
-        const wrongPassword = `${password}-wrong`;
+    expect(loginResponseBody.success).toBe(false);
+    expect(loginResponseBody.message).toContain(
+      "Incorrect email address or password",
+    );
+    expect(loginResponseBody.data).toBeUndefined();
+  });
 
-        const response = await request.post(`${API_BASE_URL}/users/login`, {
-            data: {
-                email,
-                password: wrongPassword,
-            },
-            ignoreHTTPSErrors: true,
-        });
+  test("GET /users/profile with valid token", async ({ request }) => {
+    const { email, password } = getTestCredentials();
+    const authClient = new AuthApiClient(request);
+    const authToken = await loginAndGetToken(authClient, email, password);
+    const authenticatedAuthClient = new AuthApiClient(request, authToken);
+    const userProfileResponse = await authenticatedAuthClient.getProfile();
 
-        expect(response.status()).toBe(401);
-        const body = await response.json();
+    expect(userProfileResponse.status()).toBe(200);
+    const userProfileResponseBody = await userProfileResponse.json();
 
-        expect(body.success).toBe(false);
-        expect(body.message).toContain('Incorrect email address or password');
-        expect(body.data).toBeUndefined();
+    expect(userProfileResponseBody.success).toBe(true);
+    expect(userProfileResponseBody.message).toBe("Profile successful");
+    const userProfile = userProfileResponseBody.data as UserProfile;
+    expect(typeof userProfile.id).toBe("string");
+    expect(userProfile.id.length).toBeGreaterThan(0);
+    expect(typeof userProfile.name).toBe("string");
+    expect(userProfile.name.length).toBeGreaterThan(0);
+    expect(userProfile.email).toBe(email);
+  });
 
-    });
-})
+  test("login → logout → reuse same token → rejected", async ({ request }) => {
+    const { email, password } = getTestCredentials();
+    const authClient = new AuthApiClient(request);
+    const authToken = await loginAndGetToken(authClient, email, password);
+    const authenticatedAuthClient = new AuthApiClient(request, authToken);
+    const logoutResponse = await authenticatedAuthClient.logout();
+
+    expect(logoutResponse.status()).toBe(200);
+    const logoutResponseBody = await logoutResponse.json();
+    expect(logoutResponseBody.success).toBe(true);
+    expect(logoutResponseBody.message).toBe(
+      "User has been successfully logged out",
+    );
+    const userProfileResponse = await authenticatedAuthClient.getProfile();
+
+    expect(userProfileResponse.status()).toBe(401);
+    const userProfileResponseBody = await userProfileResponse.json();
+    expect(userProfileResponseBody.success).toBe(false);
+    expect(userProfileResponseBody.message).toBe(
+      "Access token is not valid or has expired, you will need to login",
+    );
+  });
+});
