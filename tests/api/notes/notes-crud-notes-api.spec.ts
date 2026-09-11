@@ -34,20 +34,6 @@ async function expectApiErrorResponse(
   expect(responseBody.success).toBe(false);
   expect(responseBody.message).toBe(expectedMessage);
 }
-async function createAndVerifyNote(
-  notesClient: NotesApiClient,
-  notePayload: NotePayload,
-): Promise<Note> {
-  const createNoteResponse = await notesClient.createNote(notePayload);
-  const createNoteBody = await createNoteResponse.json();
-
-  expect(createNoteResponse.status()).toBe(200);
-  const createdNote = createNoteBody.data as Note;
-
-  expectNoteToMatch(createdNote, notePayload);
-
-  return createdNote;
-}
 
 test.describe("Notes API - CRUD", () => {
   let authToken: string;
@@ -91,25 +77,33 @@ test.describe("Notes API - CRUD", () => {
     authToken = responseLoginBody.data.token;
 
     const notesClient = new NotesApiClient(request, authToken);
-    const createdNegativeNote = await createAndVerifyNote(
-      notesClient,
-      noteBodyNegativeTest,
-    );
+    const createNegativeNoteResponse =
+      await notesClient.createNote(noteBodyNegativeTest);
+    const createNegativeNoteBody = await createNegativeNoteResponse.json();
+    const createdNegativeNote = createNegativeNoteBody.data as Note;
     negativeTestNoteId = createdNegativeNote.id;
+    expect(createNegativeNoteResponse.status()).toBe(200);
+    expect(createNegativeNoteBody.success).toBe(true);
+    expectNoteToMatch(createdNegativeNote, noteBodyNegativeTest);
   });
 
   test("Create, get, update and delete note", async ({ request }) => {
     const notesClient = new NotesApiClient(request, authToken);
-    const createdNote = await createAndVerifyNote(notesClient, noteBody);
-    const createdNoteId = createdNote.id;
-    let noteWasDeleted = false;
-    try {
-      const noteResponse = await notesClient.getNote(createdNoteId);
+    let createdNoteId: string | undefined;
+    let noteDeletionConfirmed = false;
 
+    try {
+      const createNoteResponse = await notesClient.createNote(noteBody);
+      const createNoteBody = await createNoteResponse.json();
+      const createdNote = createNoteBody.data as Note;
+      createdNoteId = createdNote.id;
+      expect(createNoteResponse.status()).toBe(200);
+      expectNoteToMatch(createdNote, noteBody);
+
+      const noteResponse = await notesClient.getNote(createdNoteId);
       expect(noteResponse.status()).toBe(200);
       const noteResponseBody = await noteResponse.json();
       expect(noteResponseBody.message).toBe("Note successfully retrieved");
-
       expectNoteToMatch(noteResponseBody.data, noteBody);
       expect(noteResponseBody.data.id).toBe(createdNoteId);
       // Update note PUT method
@@ -136,7 +130,6 @@ test.describe("Notes API - CRUD", () => {
       const noteDeleteResponse = await notesClient.deleteNote(createdNoteId);
 
       expect(noteDeleteResponse.status()).toBe(200);
-      noteWasDeleted = true;
       const noteDeleteResponseBody = await noteDeleteResponse.json();
       expect(noteDeleteResponseBody.success).toBe(true);
       expect(noteDeleteResponseBody.message).toBe("Note successfully deleted");
@@ -147,8 +140,9 @@ test.describe("Notes API - CRUD", () => {
         404,
         "No note was found with the provided ID, Maybe it was deleted",
       );
+      noteDeletionConfirmed = true;
     } finally {
-      if (!noteWasDeleted) {
+      if (createdNoteId !== undefined && !noteDeletionConfirmed) {
         await notesClient.deleteNote(createdNoteId);
       }
     }
@@ -212,9 +206,18 @@ test.describe("Notes API - CRUD", () => {
 
   test("GET all notes returns created note", async ({ request }) => {
     const notesClient = new NotesApiClient(request, authToken);
-    const createdNote = await createAndVerifyNote(notesClient, noteBody);
-    const createdNoteId = createdNote.id;
+    let createdNoteId: string | undefined;
+    // const createdNote = await createAndVerifyNote(notesClient, noteBody);
+    // const createdNoteId = createdNote.id;
     try {
+      const createNoteResponse = await notesClient.createNote(noteBody);
+      const createNoteBody = await createNoteResponse.json();
+
+      const createdNote = createNoteBody.data as Note;
+      createdNoteId = createdNote.id;
+
+      expect(createNoteResponse.status()).toBe(200);
+      expectNoteToMatch(createdNote, noteBody);
       const allNotesResponse = await notesClient.getAllNotes();
       expect(allNotesResponse.status()).toBe(200);
 
@@ -234,7 +237,9 @@ test.describe("Notes API - CRUD", () => {
       expectNoteToMatch(createdNoteFromAllNotes, noteBody);
       expect(createdNoteFromAllNotes.id).toBe(createdNoteId);
     } finally {
-      const noteDeleteResponse = await notesClient.deleteNote(createdNoteId);
+      if (createdNoteId) {
+        const noteDeleteResponse = await notesClient.deleteNote(createdNoteId);
+      }
     }
   });
 
