@@ -3,6 +3,7 @@ import { expect, type APIResponse } from "@playwright/test";
 type ApiErrorResponse = {
   success: boolean;
   message: string;
+  data?: unknown;
 };
 
 export async function expectApiErrorResponse(
