@@ -1,4 +1,5 @@
 import type { APIRequestContext, APIResponse } from "@playwright/test";
+import type { NotePayload } from "../types/note.types";
 
 const API_BASE_URL = "https://practice.expandtesting.com/notes/api";
 
@@ -38,14 +39,21 @@ export class NotesApiClient {
     );
   }
 
-  async createNote(data: unknown): Promise<APIResponse> {
+  async createNote(data: NotePayload): Promise<APIResponse> {
     return this.request.post(`${API_BASE_URL}/notes/`, {
       ...this.getRequestOptions(),
       data,
     });
   }
 
-  async updateNote(noteId: string, data: unknown): Promise<APIResponse> {
+  async updateNote(noteId: string, data: NotePayload): Promise<APIResponse> {
+    return this.request.put(`${API_BASE_URL}/notes/${noteId}`, {
+      ...this.getRequestOptions(),
+      data,
+    });
+  }
+
+  async updateNoteRaw(noteId: string, data: unknown): Promise<APIResponse> {
     return this.request.put(`${API_BASE_URL}/notes/${noteId}`, {
       ...this.getRequestOptions(),
       data,
