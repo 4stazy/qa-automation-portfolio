@@ -2,8 +2,8 @@ import { test, expect, type APIResponse } from "@playwright/test";
 import { NotesApiClient } from "../../../clients/notes-api.client";
 import type { NotePayload } from "../../../types/note.types";
 import { expectApiErrorResponse } from "../../../utils/api-assertions";
-
-const API_BASE_URL = "https://practice.expandtesting.com/notes/api";
+import { getTestCredentials } from "../../../utils/test-credentials";
+import { AuthApiClient } from "../../../clients/auth-api.client";
 
 type Note = NotePayload & {
   id: string;
@@ -41,18 +41,10 @@ test.describe("Notes API", () => {
 
   test.beforeAll(async ({ request }) => {
     // LOGIN API request flow
-    const email = process.env.TEST_EMAIL;
-    const password = process.env.TEST_PASSWORD;
-    if (!email || !password) {
-      throw new Error("TEST_EMAIL or TEST_PASSWORD was not loaded from .env");
-    }
-    const responseLogin = await request.post(`${API_BASE_URL}/users/login`, {
-      data: {
-        email,
-        password,
-      },
-      ignoreHTTPSErrors: true,
-    });
+    const { email, password } = getTestCredentials();
+    const authClient = new AuthApiClient(request);
+    const responseLogin = await authClient.login(email, password);
+
     expect(responseLogin.status()).toBe(200);
     const responseLoginBody = await responseLogin.json();
     expect(responseLoginBody.data.token).toBeTruthy();

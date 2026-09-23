@@ -4,8 +4,14 @@
     "strict": true,
     "types": ["node"]
   },
+
   "include": [
     "tests/**/*.ts",
+    "clients/**/*.ts",
+    "pages/**/*.ts",
+    "fixtures/**/*.ts",
+    "utils/**/*.ts",
+    "types/**/*.ts",
     "playwright.config.ts"
   ]
 }

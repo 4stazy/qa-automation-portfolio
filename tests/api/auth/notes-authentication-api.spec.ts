@@ -1,20 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { AuthApiClient } from "../../../clients/auth-api.client";
 import { expectApiErrorResponse } from "../../../utils/api-assertions";
+import { getTestCredentials } from "../../../utils/test-credentials";
 
-function getTestCredentials(): {
-  email: string;
-  password: string;
-} {
-  const email = process.env.TEST_EMAIL;
-  const password = process.env.TEST_PASSWORD;
-
-  if (!email || !password) {
-    throw new Error("TEST_EMAIL or TEST_PASSWORD was not loaded from .env");
-  }
-
-  return { email, password };
-}
 type UserProfile = {
   id: string;
   name: string;
@@ -104,6 +92,7 @@ test.describe("Notes API - Authentication", () => {
       "User has been successfully logged out",
     );
     const userProfileResponse = await authenticatedAuthClient.getProfile();
+
     const userProfileResponseBody = await expectApiErrorResponse(
       userProfileResponse,
       401,
