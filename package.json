@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test tests/api",
+    "test:ui": "playwright test tests/ui",
+    "test:smoke": "playwright test tests/smoke",
+    "test:headed": "playwright test --headed",
+    "typecheck": "tsc --noEmit",
+    "report": "playwright show-report",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
