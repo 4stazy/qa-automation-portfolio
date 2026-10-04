@@ -1,13 +1,9 @@
 import { test, expect, type APIResponse } from "@playwright/test";
 import { NotesApiClient } from "../../../clients/notes-api.client";
-import type { NotePayload } from "../../../types/note.types";
+import type { NotePayload, Note } from "../../../types/note.types";
 import { expectApiErrorResponse } from "../../../utils/api-assertions";
 import { getTestCredentials } from "../../../utils/test-credentials";
 import { AuthApiClient } from "../../../clients/auth-api.client";
-
-type Note = NotePayload & {
-  id: string;
-};
 
 function expectNoteToMatch(actualNote: Note, expectedNote: NotePayload): void {
   expect(actualNote.title).toBe(expectedNote.title);
@@ -53,10 +49,12 @@ test.describe("Notes API", () => {
     const notesClient = new NotesApiClient(request, authToken);
     const createNegativeNoteResponse =
       await notesClient.createNote(noteBodyNegativeTest);
+
+    expect(createNegativeNoteResponse.status()).toBe(200);
     const createNegativeNoteBody = await createNegativeNoteResponse.json();
     const createdNegativeNote = createNegativeNoteBody.data as Note;
     negativeTestNoteId = createdNegativeNote.id;
-    expect(createNegativeNoteResponse.status()).toBe(200);
+
     expect(createNegativeNoteBody.success).toBe(true);
     expectNoteToMatch(createdNegativeNote, noteBodyNegativeTest);
   });

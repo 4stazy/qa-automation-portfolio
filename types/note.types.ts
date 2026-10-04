@@ -4,3 +4,7 @@ export type NotePayload = {
   category: "Home" | "Work" | "Personal";
   completed: boolean;
 };
+
+export type Note = NotePayload & {
+  id: string;
+};
