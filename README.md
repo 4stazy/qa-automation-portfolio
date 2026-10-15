@@ -8,13 +8,13 @@ This repository is my hands-on QA automation portfolio focused on transitioning 
 
 The project combines:
 
-* backend/API testing fundamentals
-* API-first test design
-* authentication testing
-* UI automation
-* reusable Playwright components
-* basic SQL / DB verification practice
-* smoke and regression test organization
+- backend/API testing fundamentals
+- API-first test design
+- authentication testing
+- UI automation
+- reusable Playwright components
+- basic SQL / DB verification practice
+- smoke and regression test organization
 
 Practice application:
 
@@ -22,11 +22,11 @@ Practice application:
 
 ## Tech Stack
 
-* Node.js
-* npm
-* Playwright
-* TypeScript
-* Git / GitHub
+- Node.js
+- npm
+- Playwright
+- TypeScript
+- Git / GitHub
 
 ## Current Automation Structure
 
@@ -43,14 +43,23 @@ tests/
 │
 └── smoke/
     └── notes-app.smoke.spec.ts
+├── integration/
+│   └── notes-api-ui.spec.ts
+
 
 pages/
 └── login.page.ts
 
 fixtures/
-└── app.fixture.ts
+├── app.fixture.ts
+└── api.fixture.ts
+
+types/
+├── note.types.ts
+└── user.types.ts
 
 docs/
+└── framework-architecture.md
 
 sql/
 
@@ -65,8 +74,8 @@ Contains API-level automated checks.
 
 Current grouping:
 
-* `auth/` — authentication and authorization-related API scenarios
-* `notes/` — Notes API CRUD scenarios
+- `auth/` — authentication and authorization-related API scenarios
+- `notes/` — Notes API CRUD scenarios
 
 API tests are kept separate from UI tests to support an API-first testing strategy and faster backend-focused feedback.
 
@@ -76,10 +85,10 @@ Contains focused browser-level scenarios for user-facing functionality.
 
 Current UI coverage includes authentication-related flows such as:
 
-* valid login
-* invalid login behavior
-* authenticated state
-* logout behavior
+- valid login
+- invalid login behavior
+- authenticated state
+- logout behavior
 
 UI tests use stable Playwright locators and meaningful business assertions.
 
@@ -89,8 +98,8 @@ Contains a small set of critical P0 checks intended to quickly verify that the a
 
 Current smoke coverage includes:
 
-* login page availability
-* valid user access to the authenticated Notes area
+- login page availability
+- valid user access to the authenticated Notes area
 
 Smoke tests can be executed independently from the wider regression suite.
 
@@ -100,7 +109,7 @@ Contains Page Objects used to encapsulate page-specific locators and reusable UI
 
 Current implementation:
 
-* `LoginPage`
+- `LoginPage`
 
 The Page Object handles login page mechanics while business assertions remain visible in the test specifications.
 
@@ -110,10 +119,13 @@ Contains custom Playwright fixtures.
 
 Current implementation:
 
-* `app.fixture.ts`
-* provides a reusable `LoginPage` dependency to tests
+- `app.fixture.ts`
+- provides a reusable `LoginPage` dependency to tests
 
 This allows tests to request `loginPage` directly instead of creating `new LoginPage(page)` repeatedly.
+
+- `api.fixture.ts` — provides an isolated authenticated API user and `NotesApiClient`,
+  including disposable-user setup and cleanup.
 
 ### `docs`
 
@@ -149,6 +161,14 @@ Add valid test credentials locally.
 Do not commit real credentials, tokens or other secrets to the repository.
 
 ## How to Run Tests
+
+npm test
+npm run test:api
+npm run test:ui
+npm run test:smoke
+npm run test:integration
+npm run typecheck
+npm run report
 
 ### Run all tests
 
@@ -214,11 +234,11 @@ Backend business rules and negative scenarios are primarily tested at API level 
 
 Benefits:
 
-* faster execution
-* easier debugging
-* direct validation of backend behavior
-* better negative-path coverage
-* less dependence on browser UI
+- faster execution
+- easier debugging
+- direct validation of backend behavior
+- better negative-path coverage
+- less dependence on browser UI
 
 ### Focused UI Automation
 
@@ -226,10 +246,10 @@ UI tests are used for critical user journeys and browser-level integration rathe
 
 Examples:
 
-* login
-* logout
-* authenticated UI state
-* critical application availability
+- login
+- logout
+- authenticated UI state
+- critical application availability
 
 ### Smoke Strategy
 
@@ -247,12 +267,12 @@ The project currently uses a deliberately small automation structure without unn
 
 Implemented abstractions:
 
-* feature-based API test grouping
-* stable Playwright locators
-* basic Page Object
-* custom Playwright fixture
-* reusable API helpers
-* focused smoke suite
+- feature-based API test grouping
+- stable Playwright locators
+- basic Page Object
+- custom Playwright fixture
+- reusable API helpers
+- focused smoke suite
 
 The goal is to introduce abstractions only when they solve a real readability, reuse or maintainability problem.
 
@@ -260,28 +280,29 @@ The goal is to introduce abstractions only when they solve a real readability, r
 
 The repository also demonstrates backend-aware QA thinking beyond browser automation:
 
-* HTTP request / response analysis
-* REST API testing
-* status and response-body validation
-* authentication vs authorization
-* missing and invalid token scenarios
-* API error assertions
-* SQL verification basics
-* JOIN and data-consistency reasoning
-* UI / API / DB investigation mindset
+- HTTP request / response analysis
+- REST API testing
+- status and response-body validation
+- authentication vs authorization
+- missing and invalid token scenarios
+- API error assertions
+- SQL verification basics
+- JOIN and data-consistency reasoning
+- UI / API / DB investigation mindset
 
 ## Useful Documentation
 
-* [Terminal Navigation Commands](docs/terminal-navigation-commands.md)
-* [Playwright Terminal Commands](docs/playwright-terminal-commands.md)
+- [Terminal Navigation Commands](docs/terminal-navigation-commands.md)
+- [Playwright Terminal Commands](docs/playwright-terminal-commands.md)
+- [Framework Architecture](docs/framework-architecture.md)
 
 ## Repository Principles
 
-* API-first where backend behavior can be tested directly
-* UI automation only where browser/user integration adds value
-* meaningful assertions instead of click-only tests
-* stable locators instead of brittle CSS/XPath selectors
-* tests remain independently runnable
-* no hardcoded credentials or tokens
-* small reusable abstractions instead of premature framework complexity
-* refactoring is performed incrementally from a green test baseline
+- API-first where backend behavior can be tested directly
+- UI automation only where browser/user integration adds value
+- meaningful assertions instead of click-only tests
+- stable locators instead of brittle CSS/XPath selectors
+- tests remain independently runnable
+- no hardcoded credentials or tokens
+- small reusable abstractions instead of premature framework complexity
+- refactoring is performed incrementally from a green test baseline

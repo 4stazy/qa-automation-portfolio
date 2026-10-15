@@ -1,9 +1,8 @@
-import { test, expect, type APIResponse } from "@playwright/test";
+// import { test, expect, type APIResponse } from "@playwright/test";
+import { test, expect } from "../../../fixtures/api.fixture";
 import { NotesApiClient } from "../../../clients/notes-api.client";
 import type { NotePayload, Note } from "../../../types/note.types";
 import { expectApiErrorResponse } from "../../../utils/api-assertions";
-import { getTestCredentials } from "../../../utils/test-credentials";
-import { AuthApiClient } from "../../../clients/auth-api.client";
 
 function expectNoteToMatch(actualNote: Note, expectedNote: NotePayload): void {
   expect(actualNote.title).toBe(expectedNote.title);
@@ -14,8 +13,6 @@ function expectNoteToMatch(actualNote: Note, expectedNote: NotePayload): void {
 }
 
 test.describe("Notes API", () => {
-  let authToken: string;
-  let negativeTestNoteId: string;
   const noteBody: NotePayload = {
     title: `Test note title ${Date.now()}`,
     description: "Test note Description",
@@ -35,54 +32,34 @@ test.describe("Notes API", () => {
     completed: false,
   };
 
-  test.beforeAll(async ({ request }) => {
-    // LOGIN API request flow
-    const { email, password } = getTestCredentials();
-    const authClient = new AuthApiClient(request);
-    const responseLogin = await authClient.login(email, password);
-
-    expect(responseLogin.status()).toBe(200);
-    const responseLoginBody = await responseLogin.json();
-    expect(responseLoginBody.data.token).toBeTruthy();
-    authToken = responseLoginBody.data.token;
-
-    const notesClient = new NotesApiClient(request, authToken);
-    const createNegativeNoteResponse =
-      await notesClient.createNote(noteBodyNegativeTest);
-
-    expect(createNegativeNoteResponse.status()).toBe(200);
-    const createNegativeNoteBody = await createNegativeNoteResponse.json();
-    const createdNegativeNote = createNegativeNoteBody.data as Note;
-    negativeTestNoteId = createdNegativeNote.id;
-
-    expect(createNegativeNoteBody.success).toBe(true);
-    expectNoteToMatch(createdNegativeNote, noteBodyNegativeTest);
-  });
-
-  test("Create, get, update and delete note", async ({ request }) => {
-    const notesClient = new NotesApiClient(request, authToken);
+  test("Create, get, update and delete note", async ({
+    authenticatedApiUser,
+  }) => {
     let createdNoteId: string | undefined;
     let noteDeletionConfirmed = false;
 
     try {
-      const createNoteResponse = await notesClient.createNote(noteBody);
+      const createNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBody);
       const createNoteBody = await createNoteResponse.json();
       const createdNote = createNoteBody.data as Note;
       createdNoteId = createdNote.id;
       expect(createNoteResponse.status()).toBe(200);
       expectNoteToMatch(createdNote, noteBody);
 
-      const noteResponse = await notesClient.getNote(createdNoteId);
+      const noteResponse =
+        await authenticatedApiUser.notesClient.getNote(createdNoteId);
       expect(noteResponse.status()).toBe(200);
       const noteResponseBody = await noteResponse.json();
       expect(noteResponseBody.message).toBe("Note successfully retrieved");
       expectNoteToMatch(noteResponseBody.data, noteBody);
       expect(noteResponseBody.data.id).toBe(createdNoteId);
       // Update note PUT method
-      const noteUpdatedResponse = await notesClient.updateNote(
-        createdNoteId,
-        noteBodyUpdate,
-      );
+      const noteUpdatedResponse =
+        await authenticatedApiUser.notesClient.updateNote(
+          createdNoteId,
+          noteBodyUpdate,
+        );
       expect(noteUpdatedResponse.status()).toBe(200);
       const noteUpdatedResponseBody = await noteUpdatedResponse.json();
       expect(noteUpdatedResponseBody.message).toBe("Note successfully Updated");
@@ -90,7 +67,8 @@ test.describe("Notes API", () => {
       expect(noteUpdatedResponseBody.success).toBe(true);
       expect(noteUpdatedResponseBody.data.id).toBe(createdNoteId);
       // Validation for persisted note updated state
-      const updatedNoteGetResponse = await notesClient.getNote(createdNoteId);
+      const updatedNoteGetResponse =
+        await authenticatedApiUser.notesClient.getNote(createdNoteId);
       expect(updatedNoteGetResponse.status()).toBe(200);
       const updatedNoteGetResponseBody = await updatedNoteGetResponse.json();
       expectNoteToMatch(updatedNoteGetResponseBody.data, noteBodyUpdate);
@@ -99,13 +77,15 @@ test.describe("Notes API", () => {
         "Note successfully retrieved",
       );
       // DELETE note API request
-      const noteDeleteResponse = await notesClient.deleteNote(createdNoteId);
+      const noteDeleteResponse =
+        await authenticatedApiUser.notesClient.deleteNote(createdNoteId);
 
       expect(noteDeleteResponse.status()).toBe(200);
       const noteDeleteResponseBody = await noteDeleteResponse.json();
       expect(noteDeleteResponseBody.success).toBe(true);
       expect(noteDeleteResponseBody.message).toBe("Note successfully deleted");
-      const responseNoteNotExists = await notesClient.getNote(createdNoteId);
+      const responseNoteNotExists =
+        await authenticatedApiUser.notesClient.getNote(createdNoteId);
 
       const responseGetNoteBody = await expectApiErrorResponse(
         responseNoteNotExists,
@@ -117,50 +97,93 @@ test.describe("Notes API", () => {
       noteDeletionConfirmed = true;
     } finally {
       if (createdNoteId !== undefined && !noteDeletionConfirmed) {
-        await notesClient.deleteNote(createdNoteId);
+        await authenticatedApiUser.notesClient.deleteNote(createdNoteId);
       }
     }
   });
 
-  test("GET negativeTestNoteId without token → 401", async ({ request }) => {
-    const notesClient = new NotesApiClient(request);
-    const noteResponse = await notesClient.getNote(negativeTestNoteId);
+  test("GET negativeTestNoteId without token → 401", async ({
+    request,
+    authenticatedApiUser,
+  }) => {
+    let negativeTestNoteId: string | undefined;
+    const noteBodyNegativeTest: NotePayload = {
+      title: `Negative test note title ${Date.now()}`,
+      description: "Negative test note Description",
+      category: "Home",
+      completed: false,
+    };
 
-    const noteResponseBody = await expectApiErrorResponse(noteResponse, 401);
-    expect(noteResponseBody.message).toBe(
-      "No authentication token specified in x-auth-token header",
-    );
+    try {
+      const createNegativeNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBodyNegativeTest);
+      expect(createNegativeNoteResponse.status()).toBe(200);
+      const createNegativeNoteBody = await createNegativeNoteResponse.json();
+      const createdNegativeNote = createNegativeNoteBody.data as Note;
+      negativeTestNoteId = createdNegativeNote.id;
+      expectNoteToMatch(createdNegativeNote, noteBodyNegativeTest);
+      const noAuthNotesClient = new NotesApiClient(request);
+      const noteResponse = await noAuthNotesClient.getNote(negativeTestNoteId);
+      const noteResponseBody = await expectApiErrorResponse(noteResponse, 401);
+      expect(noteResponseBody.message).toBe(
+        "No authentication token specified in x-auth-token header",
+      );
+    } finally {
+      if (negativeTestNoteId !== undefined) {
+        await authenticatedApiUser.notesClient.deleteNote(negativeTestNoteId);
+      }
+    }
   });
 
-  test("DELETE negativeTestNoteId without token → 401", async ({ request }) => {
-    const noAuthNotesClient = new NotesApiClient(request);
-    // DELETE negativeNoteId without token → 401
-    const noteDeleteResponse =
-      await noAuthNotesClient.deleteNote(negativeTestNoteId);
-    const noteDeleteResponseBody = await expectApiErrorResponse(
-      noteDeleteResponse,
-      401,
-    );
-    expect(noteDeleteResponseBody.message).toBe(
-      "No authentication token specified in x-auth-token header",
-    );
-    // GET with token → 200
-    const authenticatedNotesClient = new NotesApiClient(request, authToken);
-    const noteResponse =
-      await authenticatedNotesClient.getNote(negativeTestNoteId);
-
-    expect(noteResponse.status()).toBe(200);
-    const noteResponseBody = await noteResponse.json();
-    expect(noteResponseBody.message).toBe("Note successfully retrieved");
-    expect(noteResponseBody.data.id).toBe(negativeTestNoteId);
-
-    expectNoteToMatch(noteResponseBody.data, noteBodyNegativeTest);
+  test("DELETE negativeTestNoteId without token → 401", async ({
+    request,
+    authenticatedApiUser,
+  }) => {
+    let negativeTestNoteId: string | undefined;
+    const noteBodyNegativeTest: NotePayload = {
+      title: `Negative test note title ${Date.now()}`,
+      description: "Negative test note Description",
+      category: "Home",
+      completed: false,
+    };
+    try {
+      const createNegativeNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBodyNegativeTest);
+      expect(createNegativeNoteResponse.status()).toBe(200);
+      const createNegativeNoteBody = await createNegativeNoteResponse.json();
+      const createdNegativeNote = createNegativeNoteBody.data as Note;
+      negativeTestNoteId = createdNegativeNote.id;
+      const noAuthNotesClient = new NotesApiClient(request);
+      // DELETE negativeNoteId without token → 401
+      const noteDeleteResponse =
+        await noAuthNotesClient.deleteNote(negativeTestNoteId);
+      const noteDeleteResponseBody = await expectApiErrorResponse(
+        noteDeleteResponse,
+        401,
+      );
+      expect(noteDeleteResponseBody.message).toBe(
+        "No authentication token specified in x-auth-token header",
+      );
+      const noteResponse =
+        await authenticatedApiUser.notesClient.getNote(negativeTestNoteId);
+      expect(noteResponse.status()).toBe(200);
+      const noteResponseBody = await noteResponse.json();
+      expect(noteResponseBody.message).toBe("Note successfully retrieved");
+      expect(noteResponseBody.data.id).toBe(negativeTestNoteId);
+      expectNoteToMatch(noteResponseBody.data, noteBodyNegativeTest);
+    } finally {
+      if (negativeTestNoteId !== undefined) {
+        await authenticatedApiUser.notesClient.deleteNote(negativeTestNoteId);
+      }
+    }
   });
 
-  test("GET note with invalid ID format returns 400", async ({ request }) => {
+  test("GET note with invalid ID format returns 400", async ({
+    authenticatedApiUser,
+  }) => {
     const invalidNoteId = "invalid-note-id";
-    const notesClient = new NotesApiClient(request, authToken);
-    const response = await notesClient.getNote(invalidNoteId);
+    const response =
+      await authenticatedApiUser.notesClient.getNote(invalidNoteId);
 
     const responseNoteBody = await expectApiErrorResponse(response, 400);
     expect(responseNoteBody.message).toBe("Note ID must be a valid ID");
@@ -168,23 +191,44 @@ test.describe("Notes API", () => {
 
   test("GET /notes/:id returns 401 when token is invalid", async ({
     request,
+    authenticatedApiUser,
   }) => {
-    const invalidToken = `${authToken.slice(0, -1)}x`;
-    const notesClient = new NotesApiClient(request, invalidToken);
-    const response = await notesClient.getNote(negativeTestNoteId);
-
-    const responseNoteBody = await expectApiErrorResponse(response, 401);
-    expect(responseNoteBody.message).toBe(
-      "Access token is not valid or has expired, you will need to login",
-    );
+    let negativeTestNoteId: string | undefined;
+    const noteBodyNegativeTest: NotePayload = {
+      title: `Negative test note title ${Date.now()}`,
+      description: "Negative test note Description",
+      category: "Home",
+      completed: false,
+    };
+    try {
+      const createNegativeNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBodyNegativeTest);
+      expect(createNegativeNoteResponse.status()).toBe(200);
+      const createNegativeNoteBody = await createNegativeNoteResponse.json();
+      const createdNegativeNote = createNegativeNoteBody.data as Note;
+      negativeTestNoteId = createdNegativeNote.id;
+      const invalidToken = `${authenticatedApiUser.token.slice(0, -1)}x`;
+      const notesClient = new NotesApiClient(request, invalidToken);
+      const response = await notesClient.getNote(negativeTestNoteId);
+      const responseNoteBody = await expectApiErrorResponse(response, 401);
+      expect(responseNoteBody.message).toBe(
+        "Access token is not valid or has expired, you will need to login",
+      );
+    } finally {
+      if (negativeTestNoteId !== undefined) {
+        await authenticatedApiUser.notesClient.deleteNote(negativeTestNoteId);
+      }
+    }
   });
 
-  test("GET all notes returns created note", async ({ request }) => {
-    const notesClient = new NotesApiClient(request, authToken);
+  test("GET all notes returns created note", async ({
+    authenticatedApiUser,
+  }) => {
     let createdNoteId: string | undefined;
 
     try {
-      const createNoteResponse = await notesClient.createNote(noteBody);
+      const createNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBody);
       const createNoteBody = await createNoteResponse.json();
 
       const createdNote = createNoteBody.data as Note;
@@ -192,7 +236,8 @@ test.describe("Notes API", () => {
 
       expect(createNoteResponse.status()).toBe(200);
       expectNoteToMatch(createdNote, noteBody);
-      const allNotesResponse = await notesClient.getAllNotes();
+      const allNotesResponse =
+        await authenticatedApiUser.notesClient.getAllNotes();
       expect(allNotesResponse.status()).toBe(200);
 
       const allNotesResponseBody = await allNotesResponse.json();
@@ -212,33 +257,34 @@ test.describe("Notes API", () => {
       expect(createdNoteFromAllNotes.id).toBe(createdNoteId);
     } finally {
       if (createdNoteId) {
-        await notesClient.deleteNote(createdNoteId);
+        await authenticatedApiUser.notesClient.deleteNote(createdNoteId);
       }
     }
   });
 
   test("PUT note rejects completed with invalid type and keeps note unchanged", async ({
-    request,
+    authenticatedApiUser,
   }) => {
     const invalidPayload = {
       ...noteBody,
       completed: "yes",
     };
 
-    const notesClient = new NotesApiClient(request, authToken);
     let createdNoteId: string | undefined;
     try {
-      const createNoteResponse = await notesClient.createNote(noteBody);
+      const createNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBody);
       const createNoteBody = await createNoteResponse.json();
       const createdNote = createNoteBody.data as Note;
       createdNoteId = createdNote.id;
       expect(createNoteResponse.status()).toBe(200);
       expectNoteToMatch(createdNote, noteBody);
 
-      const updateNoteResponse = await notesClient.updateNoteRaw(
-        createdNoteId,
-        invalidPayload,
-      );
+      const updateNoteResponse =
+        await authenticatedApiUser.notesClient.updateNoteRaw(
+          createdNoteId,
+          invalidPayload,
+        );
       const updateNoteResponseBody = await expectApiErrorResponse(
         updateNoteResponse,
         400,
@@ -246,7 +292,8 @@ test.describe("Notes API", () => {
       expect(updateNoteResponseBody.message).toBe(
         "Note completed status must be boolean",
       );
-      const noteGetResponse = await notesClient.getNote(createdNoteId);
+      const noteGetResponse =
+        await authenticatedApiUser.notesClient.getNote(createdNoteId);
       expect(noteGetResponse.status()).toBe(200);
       const noteGetResponseBody = await noteGetResponse.json();
       expect(noteGetResponseBody.message).toBe("Note successfully retrieved");
@@ -254,32 +301,34 @@ test.describe("Notes API", () => {
       expect(noteGetResponseBody.data.id).toBe(createdNoteId);
     } finally {
       if (createdNoteId !== undefined) {
-        await notesClient.deleteNote(createdNoteId);
+        await authenticatedApiUser.notesClient.deleteNote(createdNoteId);
       }
     }
   });
 
   test("PUT note rejects unsupported category and keeps note unchanged", async ({
-    request,
+    authenticatedApiUser,
   }) => {
     const invalidPayload = {
       ...noteBody,
       category: "Casino",
     };
-    const notesClient = new NotesApiClient(request, authToken);
+
     let createdNoteId: string | undefined;
     try {
-      const createNoteResponse = await notesClient.createNote(noteBody);
+      const createNoteResponse =
+        await authenticatedApiUser.notesClient.createNote(noteBody);
       const createNoteBody = await createNoteResponse.json();
       const createdNote = createNoteBody.data as Note;
       createdNoteId = createdNote.id;
       expect(createNoteResponse.status()).toBe(200);
       expectNoteToMatch(createdNote, noteBody);
 
-      const updateNoteResponse = await notesClient.updateNoteRaw(
-        createdNoteId,
-        invalidPayload,
-      );
+      const updateNoteResponse =
+        await authenticatedApiUser.notesClient.updateNoteRaw(
+          createdNoteId,
+          invalidPayload,
+        );
       const updateNoteResponseBody = await expectApiErrorResponse(
         updateNoteResponse,
         400,
@@ -287,7 +336,8 @@ test.describe("Notes API", () => {
       expect(updateNoteResponseBody.message).toBe(
         "Category must be one of the categories: Home, Work, Personal",
       );
-      const noteGetResponse = await notesClient.getNote(createdNoteId);
+      const noteGetResponse =
+        await authenticatedApiUser.notesClient.getNote(createdNoteId);
       expect(noteGetResponse.status()).toBe(200);
       const noteGetResponseBody = await noteGetResponse.json();
       expect(noteGetResponseBody.message).toBe("Note successfully retrieved");
@@ -295,16 +345,8 @@ test.describe("Notes API", () => {
       expect(noteGetResponseBody.data.id).toBe(createdNoteId);
     } finally {
       if (createdNoteId !== undefined) {
-        await notesClient.deleteNote(createdNoteId);
+        await authenticatedApiUser.notesClient.deleteNote(createdNoteId);
       }
     }
-  });
-
-  test.afterAll(async ({ request }) => {
-    if (!authToken || !negativeTestNoteId) {
-      return;
-    }
-    const notesClient = new NotesApiClient(request, authToken);
-    await notesClient.deleteNote(negativeTestNoteId);
   });
 });

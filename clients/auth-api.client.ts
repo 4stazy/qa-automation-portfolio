@@ -47,4 +47,26 @@ export class AuthApiClient {
       this.getRequestOptions(),
     );
   }
+
+  async registerUser(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<APIResponse> {
+    return this.request.post(`${API_BASE_URL}/users/register`, {
+      ...this.getRequestOptions(),
+      form: {
+        name,
+        email,
+        password,
+      },
+    });
+  }
+
+  async deleteUserAccount(): Promise<APIResponse> {
+    return this.request.delete(
+      `${API_BASE_URL}/users/delete-account`,
+      this.getRequestOptions(),
+    );
+  }
 }

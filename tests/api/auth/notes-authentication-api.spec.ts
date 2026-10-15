@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { AuthApiClient } from "../../../clients/auth-api.client";
 import { expectApiErrorResponse } from "../../../utils/api-assertions";
 import { getTestCredentials } from "../../../utils/test-credentials";
+import { UserRegisterData } from "../../../types/user.types";
 
 type UserProfile = {
   id: string;
@@ -79,27 +80,64 @@ test.describe("Notes API - Authentication", () => {
   });
 
   test("login → logout → reuse same token → rejected", async ({ request }) => {
-    const { email, password } = getTestCredentials();
-    const authClient = new AuthApiClient(request);
-    const authToken = await loginAndGetToken(authClient, email, password);
-    const authenticatedAuthClient = new AuthApiClient(request, authToken);
-    const logoutResponse = await authenticatedAuthClient.logout();
+    let userRegistered = false;
+    const timestamp = Date.now();
+    const newUserData: UserRegisterData = {
+      name: `test-${timestamp}`,
+      email: `test-${timestamp}@test.com`,
+      password: "test123",
+    };
+    try {
+      const authClient = new AuthApiClient(request);
+      const registerUserResponse = await authClient.registerUser(
+        newUserData.name,
+        newUserData.email,
+        newUserData.password,
+      );
+      expect(registerUserResponse.status()).toBe(201);
+      userRegistered = true;
+      const authToken = await loginAndGetToken(
+        authClient,
+        newUserData.email,
+        newUserData.password,
+      );
 
-    expect(logoutResponse.status()).toBe(200);
-    const logoutResponseBody = await logoutResponse.json();
-    expect(logoutResponseBody.success).toBe(true);
-    expect(logoutResponseBody.message).toBe(
-      "User has been successfully logged out",
-    );
-    const userProfileResponse = await authenticatedAuthClient.getProfile();
+      const authenticatedAuthClient = new AuthApiClient(request, authToken);
+      const logoutResponse = await authenticatedAuthClient.logout();
 
-    const userProfileResponseBody = await expectApiErrorResponse(
-      userProfileResponse,
-      401,
-    );
+      expect(logoutResponse.status()).toBe(200);
+      const logoutResponseBody = await logoutResponse.json();
+      expect(logoutResponseBody.success).toBe(true);
+      expect(logoutResponseBody.message).toBe(
+        "User has been successfully logged out",
+      );
+      const userProfileResponse = await authenticatedAuthClient.getProfile();
 
-    expect(userProfileResponseBody.message).toBe(
-      "Access token is not valid or has expired, you will need to login",
-    );
+      const userProfileResponseBody = await expectApiErrorResponse(
+        userProfileResponse,
+        401,
+      );
+
+      expect(userProfileResponseBody.message).toBe(
+        "Access token is not valid or has expired, you will need to login",
+      );
+    } finally {
+      if (userRegistered) {
+        const cleanupAuthClient = new AuthApiClient(request);
+        const authToken = await loginAndGetToken(
+          cleanupAuthClient,
+          newUserData.email,
+          newUserData.password,
+        );
+
+        const authenticatedCleanupClient = new AuthApiClient(
+          request,
+          authToken,
+        );
+        const deleteUserResponse =
+          await authenticatedCleanupClient.deleteUserAccount();
+        expect(deleteUserResponse.status()).toBe(200);
+      }
+    }
   });
 });

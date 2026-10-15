@@ -7,6 +7,7 @@
     "test:api": "playwright test tests/api",
     "test:ui": "playwright test tests/ui",
     "test:smoke": "playwright test tests/smoke",
+    "test:integration": "playwright test tests/integration",
     "test:headed": "playwright test --headed",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report",

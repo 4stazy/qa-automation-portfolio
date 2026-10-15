@@ -4,15 +4,20 @@
 
 ```text
 tests/
-├── api/
-├── smoke/
-└── ui/
+...
+├── integration/
+│   └── notes-api-ui.spec.ts
 
-clients/
-pages/
 fixtures/
+├── app.fixture.ts
+└── api.fixture.ts
+
 types/
+├── note.types.ts
+└── user.types.ts
+
 docs/
+└── framework-architecture.md
 ```
 
 ## Responsibilities
