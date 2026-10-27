@@ -21,8 +21,12 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.5",
+    "@types/pg": "^8.23.1",
     "dotenv": "^17.4.2",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
   }
 }
