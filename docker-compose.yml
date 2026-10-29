@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:17
+
+    environment:
+      POSTGRES_DB: ${PGDATABASE:?PGDATABASE is required}
+      POSTGRES_USER: ${PGUSER:?PGUSER is required}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?PGPASSWORD is required}
+
+    ports:
+      - "127.0.0.1:5433:5432"
+
+    volumes:
+      - qa_lab_pg_data:/var/lib/postgresql/data
+      - ./init/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./init/postgrest-roles.sql:/docker-entrypoint-initdb.d/02-postgrest-roles.sql:ro
+
+  api:
+    image: postgrest/postgrest:v16.5
+
+    environment:
+      PGRST_DB_URI: "postgres://${PGUSER}:${PGPASSWORD}@db:5432/${PGDATABASE}"
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_SERVER_HOST: 0.0.0.0
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    depends_on:
+      - db
+
+volumes:
+  qa_lab_pg_data:
