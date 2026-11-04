@@ -1,0 +1,306 @@
+{
+  "info": {
+    "_postman_id": "06ee97ea-5bed-475e-8c57-691b90f774ed",
+    "name": "Notes API - Automation Lab",
+    "description": "Complementary API automation practice using Postman.  \nCovers authentication, CRUD lifecycle, request chaining,  \npositive/negative assertions and cleanup.  \nPrimary automation stack: Playwright + TypeScript.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4811140"
+  },
+  "item": [
+    {
+      "name": "01 - Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Login returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Login returns valid token\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n    pm.expect(body.data.token).to.be.a(\"string\").and.not.empty;\r\n    pm.collectionVariables.set(\"authToken\", body.data.token);\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "\r\n{\r\n  \"email\": \"{{email}}\",\r\n  \"password\": \"{{password}}\"\r\n}\r\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/users/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["users", "login"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 - Get Profile",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Profile returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Profile contains correct user data\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n\r\n    pm.expect(body.data.id).to.be.a(\"string\").and.not.empty;\r\n    pm.expect(body.data.name).to.be.a(\"string\").and.not.empty;\r\n\r\n    pm.expect(body.data.email).to.eql(\r\n        pm.environment.get(\"email\")\r\n    );\r\n});\r\n\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/profile",
+          "host": ["{{baseUrl}}"],
+          "path": ["users", "profile"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 - Create Note",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\nconst noteTitle = `Postman Note ${Date.now()}`;\r\n\r\npm.collectionVariables.set(\"noteTitle\", noteTitle);\r\n"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Create Note returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Created Note matches request data\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n    pm.expect(body.data.id).to.be.a(\"string\").and.not.empty;\r\n    pm.expect(body.data.title).to.eql(\r\n        pm.collectionVariables.get(\"noteTitle\")\r\n    );\r\n    pm.expect(body.data.completed).to.eql(false);\r\n});\r\n\r\nif (pm.response.code === 200) {\r\n    const body = pm.response.json();\r\n\r\n    if (body.success && typeof body.data?.id === \"string\" && body.data.id.length > 0) {\r\n        pm.collectionVariables.set(\"noteId\", body.data.id);\r\n    }\r\n}\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "\r\n{\r\n  \"title\": \"{{noteTitle}}\",\r\n  \"description\": \"Created by Postman automation\",\r\n  \"category\": \"Work\",\r\n  \"completed\": false\r\n}\r\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/notes/",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 - Get Note",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Get Note returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Persisted Note matches created data\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n    pm.expect(body.data.id).to.eql(\r\n        pm.collectionVariables.get(\"noteId\")\r\n    );\r\n    pm.expect(body.data.title).to.eql(\r\n        pm.collectionVariables.get(\"noteTitle\")\r\n    );\r\n    pm.expect(body.data.description).to.eql(\r\n        \"Created by Postman automation\"\r\n    );\r\n    pm.expect(body.data.category).to.eql(\"Work\");\r\n    pm.expect(body.data.completed).to.eql(false);\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 - Update Note",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Update Note returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Updated Note contains expected data\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n\r\n    pm.expect(body.data.id).to.eql(\r\n        pm.collectionVariables.get(\"noteId\")\r\n    );\r\n\r\n    pm.expect(body.data.title).to.eql(\r\n        `${pm.collectionVariables.get(\"noteTitle\")} - Updated`\r\n    );\r\n\r\n    pm.expect(body.data.description).to.eql(\r\n        \"Updated by Postman automation\"\r\n    );\r\n\r\n    pm.expect(body.data.category).to.eql(\"Home\");\r\n    pm.expect(body.data.completed).to.eql(true);\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "\r\n{\r\n  \"title\": \"{{noteTitle}} - Updated\",\r\n  \"description\": \"Updated by Postman automation\",\r\n  \"category\": \"Home\",\r\n  \"completed\": true\r\n}\r\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 - Get Updated Note",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Get Updated Note returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Updated Note state is persisted\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n\r\n    pm.expect(body.data.id).to.eql(\r\n        pm.collectionVariables.get(\"noteId\")\r\n    );\r\n\r\n    pm.expect(body.data.title).to.eql(\r\n        `${pm.collectionVariables.get(\"noteTitle\")} - Updated`\r\n    );\r\n\r\n    pm.expect(body.data.description).to.eql(\r\n        \"Updated by Postman automation\"\r\n    );\r\n\r\n    pm.expect(body.data.category).to.eql(\"Home\");\r\n    pm.expect(body.data.completed).to.eql(true);\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07 - Get Note Without Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"GET Note without token returns 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"API rejects missing authentication token\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.message).to.eql(\r\n        \"No authentication token specified in x-auth-token header\"\r\n    );\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 - Delete Note",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Delete Note returns HTTP 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Delete Note returns success response\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(true);\r\n    pm.expect(body.message).to.eql(\r\n        \"Note successfully deleted\"\r\n    );\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "09 - Verify Deleted Note",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\npm.test(\"Deleted Note returns HTTP 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Deleted Note no longer exists\", function () {\r\n    const body = pm.response.json();\r\n\r\n    pm.expect(body.success).to.eql(false);\r\n\r\n    pm.expect(body.message).to.eql(\r\n        \"No note was found with the provided ID, Maybe it was deleted\"\r\n    );\r\n\r\n    \r\nif (pm.response.code === 404) {\r\n    const body = pm.response.json();\r\n\r\n    if (\r\n        body.success === false &&\r\n        body.message === \"No note was found with the provided ID, Maybe it was deleted\"\r\n    ) {\r\n        pm.collectionVariables.unset(\"noteId\");\r\n        pm.collectionVariables.unset(\"noteTitle\");\r\n        pm.collectionVariables.unset(\"authToken\");\r\n    }\r\n}\r\n\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
