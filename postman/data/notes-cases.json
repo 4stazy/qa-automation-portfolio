@@ -1,0 +1,20 @@
+[
+  {
+    "caseName": "existing-note",
+    "idMode": "created",
+    "lookupId": "",
+    "expectedStatus": 200
+  },
+  {
+    "caseName": "invalid-note-id",
+    "idMode": "literal",
+    "lookupId": "invalid-note-id",
+    "expectedStatus": 400
+  },
+  {
+    "caseName": "another-invalid-note-id",
+    "idMode": "literal",
+    "lookupId": "another-invalid-note-id",
+    "expectedStatus": 400
+  }
+]

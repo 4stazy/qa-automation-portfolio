@@ -150,6 +150,44 @@
       "response": []
     },
     {
+      "name": "04A - Data-driven Get Note",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\nconst idMode = pm.iterationData.get(\"idMode\");\r\n\r\nconst targetNoteId =\r\n    idMode === \"created\"\r\n        ? pm.collectionVariables.get(\"noteId\")\r\n        : pm.iterationData.get(\"lookupId\");\r\n\r\nif (!targetNoteId) {\r\n    throw new Error(\"Missing targetNoteId for current iteration\");\r\n}\r\n\r\npm.variables.set(\"targetNoteId\", targetNoteId);\r\n"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "\r\nconst caseName = pm.iterationData.get(\"caseName\");\r\nconst expectedStatus = Number(\r\n    pm.iterationData.get(\"expectedStatus\")\r\n);\r\n\r\npm.test(`${caseName}: GET Note returns ${expectedStatus}`, function () {\r\n    pm.response.to.have.status(expectedStatus);\r\n});\r\n"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-auth-token",
+            "value": "{{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{targetNoteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{targetNoteId}}"]
+        }
+      },
+      "response": []
+    },
+    {
       "name": "05 - Update Note",
       "event": [
         {

@@ -7,3 +7,5 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 .env
+# Local Postman credentials
+postman/*.local.postman_environment.json
